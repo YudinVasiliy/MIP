@@ -4,6 +4,7 @@ import numpy as np
 dt = 1/240 # pybullet simulation step
 th0 = np.deg2rad(15) #initial positin
 thd = np.deg2rad(30) #destiny
+print(thd-th0)
 jIdx = 1 #joint index
 maxTime = 5 #process time
 logTime = np.arange(0.0, maxTime, dt) #array with time moments
@@ -47,11 +48,17 @@ a5 = 6/T**5
 
 # turn off the motor for the free motion
 p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
+jointState = p.getJointState(boxId, jIdx)
+#current position
+th1=jointState[0]
+#current velocity
+dth1 = jointState[1]
+prev_dth1=dth1
 for t in logTime[1:]:
     jointState = p.getJointState(boxId, jIdx)
-    #current position
+
     th1 = jointState[0]
-    #current velocity
+
     dth1 = jointState[1]
 
     #current s, part of the path, [0,1]
@@ -66,14 +73,14 @@ for t in logTime[1:]:
     #integral discrepancy
     e_int += e * dt
 
-    u =  -kp*e - kd*(dth1 - theta_speed) - ki*e_int - theta_acceler
+    u =  kp*e - kd*(dth1 - theta_speed) - ki*e_int + theta_acceler
     if t > T:
       u = 0
       theta_acceler = 0
     #control
     tau = m*g*L*np.sin(th1) + k*dth1 + m*L*L*(u)
 
-    logAcc[idx] = np.rad2deg(theta_acceler)
+    #logAcc[idx] = np.rad2deg(theta_acceler)
     logCtrl[idx]=tau
 
     p.setJointMotorControl2(
@@ -91,9 +98,12 @@ for t in logTime[1:]:
     logVel[idx] = np.rad2deg(dth1)
     idx += 1
     logPos[idx] = np.rad2deg(th1)
+    logAcc[idx]=np.rad2deg((dth1-prev_dth1)/dt)
+    prev_dth1=dth1
 
 logVel[idx] = np.rad2deg(p.getJointState(boxId, jIdx)[1])
-logAcc[idx] = np.rad2deg(theta_acceler)
+#logAcc[idx] = np.rad2deg(theta_acceler)
+logAcc[idx]=(dth1-prev_dth1)/dt
 
 import matplotlib.pyplot as plt
 
